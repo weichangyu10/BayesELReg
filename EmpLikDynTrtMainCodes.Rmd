@@ -1,0 +1,137 @@
+---
+title: "Bayesian likelihood-based regression"
+author: "BayesLikReg Authors"
+date: "01/07/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Load necessary packages
+```{r}
+library(rstan)
+library(mvtnorm)
+library(parallel)
+library(MASS)
+library(mgcv)
+library(nnet)
+library(npreg)
+library(splines)
+library(foreach)
+library(doParallel)
+library(cvTools)
+library(Rcpp)
+library(RcppArmadillo)
+```
+
+Load required functions
+```{r}
+source("EmplikDynTrtSupportFunctions.R")
+sourceCpp("EmplikDynTrtSupportFunctions.cpp")
+
+expit <- function(t){
+  
+  1/(1+exp(-t))
+  
+}
+
+softmax <- function(t){
+  
+  exp(t)/sum(exp(t))
+  
+  
+}
+
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+```
+
+Run Simulation 1 (N=1000;Ntest=1000)
+```{r}
+source("Simulation1EmpLikDynTrt.R")
+id.interest <- 1:200
+POA.prop <- rowMeans(a1.opt.MAT[id.interest,] == a1.opt.true.MAT[id.interest,])
+POA.QL <- rowMeans(QL.a1.opt.MAT[id.interest,] == a1.opt.true.MAT[id.interest,])
+POA.prop.emplik <- rowMeans(a1.opt.emplik.MAT[id.interest,] == a1.opt.true.MAT[id.interest,])
+
+c(mean(POA.prop), mean(POA.prop.emplik), mean(POA.QL))
+c(sd(POA.prop), sd(POA.prop.emplik), sd(POA.QL))/sqrt(200)
+
+RMSE.prop <- sqrt(rowMeans(0.2*(mopt1.mean.MAT[id.interest,]-mopt1.true.MAT[id.interest,])^2 + 0.2*(mopt2.mean.MAT[id.interest,]-mopt2.true.MAT[id.interest,])^2 + 0.2*(mopt3.mean.MAT[id.interest,]-mopt3.true.MAT[id.interest,])^2 + 0.2*(mopt4.mean.MAT[id.interest,]-mopt4.true.MAT[id.interest,])^2 + 0.2*(mopt5.mean.MAT[id.interest,]-mopt5.true.MAT[id.interest,])^2))
+RMSE.QL <- sqrt(rowMeans(0.2*(QL.mopt1.mean.MAT[id.interest,]-mopt1.true.MAT[id.interest,])^2 + 0.2*(QL.mopt2.mean.MAT[id.interest,]-mopt2.true.MAT[id.interest,])^2 + 0.2*(QL.mopt3.mean.MAT[id.interest,]-mopt3.true.MAT[id.interest,])^2 + 0.2*(QL.mopt4.mean.MAT[id.interest,]-mopt4.true.MAT[id.interest,])^2 + 0.2*(QL.mopt5.mean.MAT[id.interest,]-mopt5.true.MAT[id.interest,])^2))
+RMSE.prop.emplik <- sqrt(rowMeans(0.2*(mopt1.mean.emplik.MAT[id.interest,]-mopt1.true.MAT[id.interest,])^2 + 0.2*(mopt2.mean.emplik.MAT[id.interest,]-mopt2.true.MAT[id.interest,])^2 + 0.2*(mopt3.mean.emplik.MAT[id.interest,]-mopt3.true.MAT[id.interest,])^2 + 0.2*(mopt4.mean.emplik.MAT[id.interest,]-mopt4.true.MAT[id.interest,])^2 + 0.2*(mopt5.mean.emplik.MAT[id.interest,]-mopt5.true.MAT[id.interest,])^2))
+c(mean(RMSE.prop),mean(RMSE.QL),mean(RMSE.prop.emplik))
+c(sd(RMSE.prop),sd(RMSE.QL),sd(RMSE.prop.emplik))/sqrt(200)
+
+c(mean(EV.Proposed), mean(EV.Proposed.Emplik), mean(EV.QL))
+c(sd(EV.Proposed), sd(EV.Proposed.Emplik), sd(EV.QL))/sqrt(200)
+```
+
+Run Simulation 2 (N=1000;Ntest=1000)
+```{r}
+source("Simulation2EmpLikDynTrt.R")
+id.interest <- 1:200
+POA.prop <- rowMeans(a1.opt.MAT[id.interest,] == a1.opt.true.MAT[id.interest,])
+POA.QL <- rowMeans(QL.a1.opt.MAT[id.interest,] == a1.opt.true.MAT[id.interest,])
+POA.prop.emplik <- rowMeans(a1.opt.emplik.MAT[id.interest,] == a1.opt.true.MAT[id.interest,])
+
+c(mean(POA.prop), mean(POA.prop.emplik), mean(POA.QL))
+c(sd(POA.prop), sd(POA.prop.emplik), sd(POA.QL))/sqrt(200)
+
+RMSE.prop <- sqrt(rowMeans(0.2*(mopt1.mean.MAT[id.interest,]-mopt1.true.MAT[id.interest,])^2 + 0.2*(mopt2.mean.MAT[id.interest,]-mopt2.true.MAT[id.interest,])^2 + 0.2*(mopt3.mean.MAT[id.interest,]-mopt3.true.MAT[id.interest,])^2 + 0.2*(mopt4.mean.MAT[id.interest,]-mopt4.true.MAT[id.interest,])^2 + 0.2*(mopt5.mean.MAT[id.interest,]-mopt5.true.MAT[id.interest,])^2))
+RMSE.QL <- sqrt(rowMeans(0.2*(QL.mopt1.mean.MAT[id.interest,]-mopt1.true.MAT[id.interest,])^2 + 0.2*(QL.mopt2.mean.MAT[id.interest,]-mopt2.true.MAT[id.interest,])^2 + 0.2*(QL.mopt3.mean.MAT[id.interest,]-mopt3.true.MAT[id.interest,])^2 + 0.2*(QL.mopt4.mean.MAT[id.interest,]-mopt4.true.MAT[id.interest,])^2 + 0.2*(QL.mopt5.mean.MAT[id.interest,]-mopt5.true.MAT[id.interest,])^2))
+RMSE.prop.emplik <- sqrt(rowMeans(0.2*(mopt1.mean.emplik.MAT[id.interest,]-mopt1.true.MAT[id.interest,])^2 + 0.2*(mopt2.mean.emplik.MAT[id.interest,]-mopt2.true.MAT[id.interest,])^2 + 0.2*(mopt3.mean.emplik.MAT[id.interest,]-mopt3.true.MAT[id.interest,])^2 + 0.2*(mopt4.mean.emplik.MAT[id.interest,]-mopt4.true.MAT[id.interest,])^2 + 0.2*(mopt5.mean.emplik.MAT[id.interest,]-mopt5.true.MAT[id.interest,])^2))
+c(mean(RMSE.prop),mean(RMSE.QL),mean(RMSE.prop.emplik))
+c(sd(RMSE.prop),sd(RMSE.QL),sd(RMSE.prop.emplik))/sqrt(200)
+
+c(mean(EV.Proposed), mean(EV.Proposed.Emplik), mean(EV.QL))
+c(sd(EV.Proposed), sd(EV.Proposed.Emplik), sd(EV.QL))/sqrt(200)
+
+```
+
+Run Simulation 3 (N=2000;Ntest=100)
+```{r}
+source("Simulation3EmpLikDynTrtv2.R")
+id.interest <- 1:200
+POA.prop <- rowMeans(a1.opt.MAT[id.interest,]==a1.opt.true.MAT[id.interest,])
+POA.prop.emplik <- rowMeans(a1.opt.emplik.MAT[id.interest,]==a1.opt.true.MAT[id.interest,])
+POA.QL <- rowMeans(QL.a1.opt.MAT[id.interest,]==a1.opt.true.MAT[id.interest,])
+
+c(mean(POA.prop), mean(POA.prop.emplik), mean(POA.QL))
+c(sd(POA.prop), sd(POA.prop.emplik), sd(POA.QL))/sqrt(200)
+
+RMSE.prop <- sqrt(rowMeans(0.5*(mopt1.mean.MAT[id.interest,] - mopt1.true.MAT[id.interest,])^2 + 0.5*(moptNeg1.mean.MAT[id.interest,] - moptNeg1.true.MAT[id.interest,])^2))
+RMSE.prop.emplik <- sqrt(rowMeans(0.5*(mopt1.mean.emplik.MAT[id.interest,] - moptNeg1.true.MAT[id.interest,])^2 + 0.5*(moptNeg1.mean.emplik.MAT[id.interest,] - mopt1.true.MAT[id.interest,])^2))
+RMSE.QL <- sqrt(rowMeans(0.5*(QL.mu1hat.opt.MAT[id.interest,1:N.test] - mopt1.true.MAT[id.interest,])^2 + 0.5*(moptNeg1.mean.emplik.MAT[id.interest,(N.test+1):(2*N.test)] - moptNeg1.true.MAT[id.interest,])^2))
+
+c(mean(EV.Proposed), mean(EV.Proposed.Emplik), mean(EV.QL))
+c(sd(EV.Proposed), sd(EV.Proposed.Emplik), sd(EV.QL))/sqrt(200)
+
+```
+
+
+Run Simulation 4 (N=2000;Ntest=100)
+```{r}
+source("Simulation4EmpLikDynTrtv2.R")
+id.interest <- 1:200
+POA.prop <- rowMeans(a1.opt.MAT[id.interest,]==a1.opt.true.MAT[id.interest,])
+POA.prop.emplik <- rowMeans(a1.opt.emplik.MAT[id.interest,]==a1.opt.true.MAT[id.interest,])
+POA.QL <- rowMeans(QL.a1.opt.MAT[id.interest,]==a1.opt.true.MAT[id.interest,])
+
+c(mean(POA.prop), mean(POA.prop.emplik), mean(POA.QL))
+c(sd(POA.prop), sd(POA.prop.emplik), sd(POA.QL))/sqrt(200)
+
+RMSE.prop <- sqrt(rowMeans(0.5*(mopt1.mean.MAT[id.interest,] - mopt1.true.MAT[id.interest,])^2 + 0.5*(moptNeg1.mean.MAT[id.interest,] - moptNeg1.true.MAT[id.interest,])^2))
+RMSE.prop.emplik <- sqrt(rowMeans(0.5*(mopt1.mean.emplik.MAT[id.interest,] - moptNeg1.true.MAT[id.interest,])^2 + 0.5*(moptNeg1.mean.emplik.MAT[id.interest,] - mopt1.true.MAT[id.interest,])^2))
+RMSE.QL <- sqrt(rowMeans(0.5*(QL.mu1hat.opt.MAT[id.interest,1:N.test] - mopt1.true.MAT[id.interest,])^2 + 0.5*(moptNeg1.mean.emplik.MAT[id.interest,(N.test+1):(2*N.test)] - moptNeg1.true.MAT[id.interest,])^2))
+
+c(mean(EV.Proposed), mean(EV.Proposed.Emplik), mean(EV.QL))
+c(sd(EV.Proposed), sd(EV.Proposed.Emplik), sd(EV.QL))/sqrt(200)
+
+```
